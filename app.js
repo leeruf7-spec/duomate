@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWith
   sendEmailVerification, sendPasswordResetEmail, signOut, reload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy,
   onSnapshot, serverTimestamp, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS, BANK, ADMIN_PIN_SHA256, ADMIN_LOGIN_EMAIL, GUEST_EMAILS, CREDIT, FEE_WON, OPS_RATE, PRIZE_BASE, PRIZE_MAX } from "./firebase-config.js";
+import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS, BANK, ADMIN_PIN_SHA256, ADMIN_LOGIN_EMAIL, CREDIT, FEE_WON, OPS_RATE, PRIZE_BASE, PRIZE_MAX } from "./firebase-config.js";
 import { SPR } from "./sprites.js";
 
 const fb = initializeApp(firebaseConfig);
@@ -43,8 +43,7 @@ const hm=m=>{m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?(r?`${h}�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2800)}
 function shake(el){el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake")}
-const isJnu=e=>!!e&&(ALLOWED_DOMAINS.some(d=>e.toLowerCase().endsWith("@"+d))||isAdminEmail(e)||isGuest(e));
-const isGuest=e=>!!e&&GUEST_EMAILS.map(x=>x.toLowerCase()).includes(e.toLowerCase());
+const isJnu=e=>!!e&&(ALLOWED_DOMAINS.some(d=>e.toLowerCase().endsWith("@"+d))||isAdminEmail(e));
 const isAdminEmail=e=>!!e&&ADMIN_EMAILS.map(x=>x.toLowerCase()).includes(e.toLowerCase());
 
 /* ================= AUTH ================= */
@@ -74,20 +73,12 @@ $("#authBtn").onclick=async()=>{
       if(pw!==$("#pw2").value) throw {code:"x",message:"비밀번호 확인이 일치하지 않아요"};
       if(!$("#terms").checked) throw {code:"x",message:"이메일 수집에 동의해 주세요"};
       const cred=await createUserWithEmailAndPassword(auth,email,pw);
-      if(!isAdminEmail(email)&&!isGuest(email)) await sendEmailVerification(cred.user);
+      if(!isAdminEmail(email)) await sendEmailVerification(cred.user);
     }else{
       await signInWithEmailAndPassword(auth,email,pw);
     }
   }catch(e){authError(e.code==="x"?e.message:(AUTH_MSG[e.code]||"잠시 뒤 다시 시도해 주세요 ("+e.code+")"))}
   btn.disabled=false;
-};
-$("#pSend").onclick=async()=>{
-  const u=auth.currentUser,n=$("#pName").value.trim(),k=$("#pKakao").value.trim(),e=$("#verifyErr");
-  if(!u)return; if(!n||!k){e.textContent="이름과 카톡 ID를 적어 주세요";e.hidden=false;shake($("#verifyBox"));return}
-  e.hidden=true;$("#pSend").disabled=true;
-  try{await setDoc(doc(db,"pending",u.uid),{uid:u.uid,email:u.email,name:n,kakao:k,createdAt:serverTimestamp()});toast("승인 요청을 보냈어요")}
-  catch(x){e.textContent="요청을 보내지 못했어요. 잠시 뒤 다시 눌러 주세요";e.hidden=false}
-  $("#pSend").disabled=false;
 };
 $("#admToggle").onclick=()=>{$("#admBox").hidden=!$("#admBox").hidden;$("#admPw").focus()};
 async function admEnter(){
@@ -103,7 +94,7 @@ $("#forgotBtn").onclick=async()=>{
 };
 $("#verifiedBtn").onclick=async()=>{
   try{await reload(auth.currentUser);await auth.currentUser.getIdToken(true)}catch(e){}
-  if(auth.currentUser&&(auth.currentUser.emailVerified||isAdminEmail(auth.currentUser.email)||isGuest(auth.currentUser.email))) enterApp(auth.currentUser);
+  if(auth.currentUser?.emailVerified) enterApp(auth.currentUser);
   else{const e=$("#verifyErr");e.textContent="아직 인증이 확인되지 않았어요. 메일 속 링크를 눌렀는지 확인해 주세요.";e.hidden=false;shake($("#verifyBox"))}
 };
 $("#resendBtn").onclick=async()=>{try{await sendEmailVerification(auth.currentUser);toast("인증 메일을 다시 보냈어요")}catch(e){toast(AUTH_MSG[e.code]||"잠시 뒤 다시 보내 주세요")}};
@@ -111,15 +102,13 @@ $("#logoutBtn2").onclick=()=>signOut(auth);
 $("#logoutBtn").onclick=async()=>{if(running)stopTimer();await signOut(auth);toast("로그아웃했어요")};
 
 function showAuth(){ $("#admLogin").hidden=false; $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=false; $("#verifyBox").hidden=true; setAuthMode(authMode) }
-function showVerify(u){ $("#admLogin").hidden=true; $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=true; $("#verifyBox").hidden=false; $("#verifyMail").textContent=u.email; $("#verifyErr").hidden=true ;
-  $("#pendState").hidden=true; subs.push(onSnapshot(doc(db,"approved",u.uid),x=>{if(x.exists()&&!(ME&&ME.uid===u.uid))enterApp(u)},()=>{}));
-  subs.push(onSnapshot(doc(db,"pending",u.uid),x=>{$("#pendState").hidden=!x.exists()},()=>{})); }
+function showVerify(u){ $("#admLogin").hidden=true; $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=true; $("#verifyBox").hidden=false; $("#verifyMail").textContent=u.email; $("#verifyErr").hidden=true }
 
 onAuthStateChanged(auth,u=>{
   unsubAll();
   if(!u){ME=null;showAuth();return}
   if(!isJnu(u.email)){signOut(auth);authError("전남대 메일 계정만 이용할 수 있어요");return}
-  if(!u.emailVerified&&!isAdminEmail(u.email)&&!isGuest(u.email)){showVerify(u);return}
+  if(!u.emailVerified&&!isAdminEmail(u.email)){showVerify(u);return}
   enterApp(u);
 });
 
@@ -559,7 +548,7 @@ setInterval(()=>{if(!homeVisible())return;for(const id of ["#meSt","#ptSt"]){con
 document.addEventListener("click",e=>{const st=e.target.closest(".stage .sticker");if(st){say(st);if(st.dataset.s==="fire")confetti(e.clientX,e.clientY,20);else embers(st,6)}});
 
 /* ================= ADMIN ================= */
-let PENDING=[], APPS=[], MATCHES=[], REPORTS=[];
+let APPS=[], MATCHES=[], REPORTS=[];
 const jac=(a,b)=>{const A=new Set(a||[]),B=new Set(b||[]);if(!A.size&&!B.size)return .5;let i=0;A.forEach(x=>B.has(x)&&i++);return i/new Set([...A,...B]).size};
 function score(a,b){
   if(a.campus!==b.campus) return null;
@@ -598,10 +587,6 @@ function renderAdmin(){
   $("#stWait").textContent=wait.length; $("#stDone").textContent=MATCHES.length; $("#stRep").textContent=open.length;
   const dep=APPS.filter(a=>a.mode==="deposit").length, ys=APPS.filter(a=>a.campus==="여수캠퍼스").length;
   drawPool();
-  $("#pendCnt").textContent=PENDING.length?PENDING.length+"명":"";
-  $("#pendList").innerHTML=PENDING.length?PENDING.map(p=>`<div class="app-card"><div class="meta"><b>${esc(p.name)}</b> <span class="muted">${esc(p.email)}</span><div class="muted">카톡 ${esc(p.kakao)}</div></div><button class="btn dark sm" data-ok="${p.uid}" type="button">승인</button> <button class="btn sm" data-no="${p.uid}" type="button">거절</button></div>`).join(""):'<div class="empty">승인 대기 중인 가입자가 없어요.</div>';
-  $$("#pendList [data-ok]").forEach(b=>b.onclick=async()=>{const p=PENDING.find(x=>x.uid===b.dataset.ok);if(!p)return;b.disabled=true;try{const w=writeBatch(db);w.set(doc(db,"approved",p.uid),{email:p.email,name:p.name,at:serverTimestamp()});w.delete(doc(db,"pending",p.uid));await w.commit();toast(p.name+" 님을 승인했어요")}catch(e){b.disabled=false;toast("승인하지 못했어요")}});
-  $$("#pendList [data-no]").forEach(b=>b.onclick=async()=>{if(!b.dataset.armed){b.dataset.armed=1;b.textContent="정말 거절";return}try{await deleteDoc(doc(db,"pending",b.dataset.no));toast("거절했어요")}catch(e){toast("처리하지 못했어요")}});
   $("#stMix").textContent=APPS.length?`전체 신청 ${APPS.length}명 · 계약금 ${dep} · 상품 ${APPS.length-dep} · 광주 ${APPS.length-ys} · 여수 ${ys}`:"";
   // reports
   $("#repList").innerHTML=open.length?open.map(r=>`<div class="report-card"><div class="row"><b>${esc(r.reason)}</b><span class="muted small">${r.createdAt?.toDate?r.createdAt.toDate().toLocaleString("ko-KR"):""}</span></div>
@@ -679,7 +664,6 @@ $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#chatSend").cl
 $("#rematch").onclick=()=>{renderAdmin();toast("다시 계산했어요")};
 $("#saveChat").onclick=async()=>{const v=$("#chatUrl").value.trim();if(v&&!/^https:\/\//.test(v)){toast("https:// 로 시작하는 주소를 넣어 주세요");return}try{await setDoc(doc(db,"config","public"),{chat:v});toast("저장했어요")}catch(e){toast("저장하지 못했어요")}};
 function startAdmin(){
-  adminSubs.push(onSnapshot(collection(db,"pending"),s=>{PENDING=s.docs.map(d=>d.data());renderAdmin()},e=>console.warn(e)));
   adminSubs.push(onSnapshot(collection(db,"applications"),s=>{APPS=s.docs.map(d=>d.data());renderAdmin()},e=>console.warn(e)));
   adminSubs.push(onSnapshot(query(collection(db,"matches"),where("active","==",true)),s=>{MATCHES=s.docs.map(d=>({id:d.id,...d.data()}));renderAdmin()},e=>console.warn(e)));
   adminSubs.push(onSnapshot(query(collection(db,"reports"),where("status","==","open")),s=>{REPORTS=s.docs.map(d=>({id:d.id,...d.data()}));renderAdmin()},e=>console.warn(e)));
