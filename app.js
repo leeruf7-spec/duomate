@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWith
   sendEmailVerification, sendPasswordResetEmail, signOut, reload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy,
   onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS } from "./firebase-config.js";
+import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS, BANK, ADMIN_PIN_SHA256, CREDIT } from "./firebase-config.js";
 import { SPR } from "./sprites.js";
 
 const fb = initializeApp(firebaseConfig);
@@ -22,7 +22,7 @@ const CNU_EVENTS=[
 ];
 const OPT={
   campus:["광주캠퍼스","여수캠퍼스"], year:["1학년","2학년","3학년","4학년","5학년 이상","대학원"],
-  exam:["중간고사","기말고사","자격증","어학(토익 등)","공무원·고시","기타"], goal:[60,120,180,240,300], pass:[4,5,6,7],
+  exam:["중간고사","기말고사","자격증","어학(토익 등)","공무원·고시","기타"], goal:[60,120,180,240,300], pass:[4,5,6,7], gender:["남","여","밝히지 않음"],
   slots:["아침 6~12시","오후 12~18시","저녁 18~24시","새벽 0~6시"],
   placesG:["백도","디도","단과대 라운지","학교 앞 카페","집·기숙사"], placesY:["문사","수해대 라운지","학교 앞 카페","집·기숙사"],
   talk:["타이머로만","하루 한 번 체크","자주 응원"], pref:["같은 학과","같은 단과대","상관없음"], deposit:[5000,10000,20000,30000]
@@ -133,7 +133,7 @@ async function enterApp(u){
   },()=>{}));
   // my active match
   subs.push(onSnapshot(query(collection(db,"matches"),where("members","array-contains",u.uid)),s=>{
-    const m=s.docs.find(d=>d.data().active===true); MATCH=m?{id:m.id,...m.data()}:null; applyMatch(); render();
+    const m=s.docs.find(d=>d.data().active===true); MATCH=m?{id:m.id,...m.data()}:null; applyMatch(); drawChatPanel(); render();
   },e=>console.warn(e)));
   subs.push(onSnapshot(doc(db,"config","public"),s=>{chatUrl=s.exists()?(s.data().chat||""):"";$("#chatUrl").value=chatUrl;drawChat()},()=>{}));
   const admin=isAdminEmail(u.email);
@@ -229,11 +229,12 @@ function render(){
   $("#todayFill").style.width=Math.min(100,myToday/c.goal*100)+"%";
   const left=7-Math.max(0,Math.min(7,dIdx-1)), need=Math.max(0,c.pass-okCount()), pill=$("#settlePill");
   if(need===0){pill.textContent="달성 확정";pill.className="pill on"}else if(need>left){pill.textContent="달성 불가";pill.className="pill bad"}else{pill.textContent=`남은 ${left}일 중 ${need}일 더`;pill.className="pill fire"}
+  const prizeTier=g=>g>=240?"상위 상품 중 선택":g>=180?"중간 상품 중 선택":g>=120?"음료+간식 세트":"음료 쿠폰 1장";
   if(c.mode==="deposit"){const bonus=Math.round(c.deposit*0.7*0.35/100)*100;
     $("#sWin").textContent=won(c.deposit+bonus);$("#sWinSub").textContent=`계약금 + 보너스 약 ${won(bonus)}`;
     $("#sLose").textContent="0원";$("#sLoseSub").textContent=`${won(c.deposit)} 몰수`;
     $("#settleRule").textContent="보너스는 같은 주 실패자 비율에 따라 달라집니다. 위 금액은 실패율 35% 기준 예상치예요.";
-  }else{$("#sWin").textContent="음료 쿠폰";$("#sWinSub").textContent="에너지 보급소에서 교환";$("#sLose").textContent="0원";$("#sLoseSub").textContent="잃는 것 없음";$("#settleRule").textContent="계약금 모드로 신청하면 달성 시 현금 보너스를 받을 수 있어요."}
+  }else{$("#sWin").textContent=prizeTier(c.goal);$("#sWinSub").textContent="목표 시간이 길수록 좋은 상품을 고를 수 있어요";$("#sLose").textContent="0원";$("#sLoseSub").textContent="잃는 것 없음";$("#settleRule").textContent="계약금 모드로 신청하면 달성 시 현금 보너스를 받을 수 있어요."}
 }
 
 /* ================= CALENDAR ================= */
@@ -300,7 +301,7 @@ $("#icsBtn").onclick=()=>{
 };
 
 /* ================= APPLICATION FORM ================= */
-const F={campus:"광주캠퍼스",year:null,exam:["중간고사"],goal:120,pass:5,slots:[],places:[],talk:"하루 한 번 체크",pref:"상관없음",mode:"deposit",deposit:10000,animal:"panda"};
+const F={campus:"광주캠퍼스",gender:null,year:null,exam:["중간고사"],goal:120,pass:5,slots:[],places:[],talk:"하루 한 번 체크",pref:"상관없음",mode:"deposit",deposit:10000,animal:"panda"};
 let step=1;
 const fmt={goal:hm,pass:v=>`${v}일`,deposit:won};
 function drawSegs(){
@@ -333,14 +334,16 @@ function drawContract(){
     <dt>목표</dt><dd>하루 ${hm(F.goal)}, 7일 중 ${F.pass}일 이상 · ${esc(F.exam.join(", "))}</dd>
     <dt>시간·장소</dt><dd>${esc(F.slots.join(", ")||"-")}${F.places.length?" · "+esc(F.places.join(", ")):""}</dd>
     <dt>참가비</dt><dd>${dep?`계약금 ${won(F.deposit)}`:"무료 (상품 모드)"}</dd>
-    <dt>달성 시</dt><dd>${dep?"계약금 전액 환급 + 실패자 몰수금 70% 분배":"제휴처 음료 쿠폰 1장"}</dd>
+    <dt>달성 시</dt><dd>${dep?"계약금 전액 환급 + 실패자 몰수금 70% 분배":"목표 시간별 상품 선택 (60분 음료 · 120분 음료+간식 · 180분 이상 상위 상품)"}</dd>
     <dt>미달성 시</dt><dd>${dep?`계약금 ${won(F.deposit)} 몰수`:"보상 없음"}</dd>
     <dt>집중 규칙</dt><dd>${$("#aStrict").checked?"엄격 모드 · 하루 3회 이탈 시 미달성":"일반 모드 · 이탈은 기록만"}</dd>
   </dl>${dep?'<span class="stamp">계약</span>':""}`;
   $("#agreeDepWrap").hidden=!dep;
+  const bb=$("#bankBox");bb.hidden=!dep;if(dep)bb.innerHTML=bankHtml(F.deposit);
 }
+function bankHtml(amt){return `<b>계약금 입금 안내</b><br>${esc(BANK.name)} <b class="tnum">${esc(BANK.no)}</b> ${esc(BANK.holder)}<br>입금액 <b>${won(amt)}</b> · 입금자명은 <b>신청 번호</b>(제출 후 표시) 또는 본인 이름으로 보내 주세요.<br><span class="small muted">운영진이 입금을 확인하면 ‘입금 완료’로 바뀝니다. 입금 확인 전에는 매칭이 확정되지 않아요.</span>`}
 function validate(n){
-  if(n===1){if(!$("#aNick").value.trim())return"닉네임을 적어 주세요";if(!$("#aCollege").value)return"단과대학을 골라 주세요";if(!F.year)return"학년을 골라 주세요"}
+  if(n===1){if(!$("#aNick").value.trim())return"닉네임을 적어 주세요";if(!$("#aCollege").value)return"단과대학을 골라 주세요";if(!F.year)return"학년을 골라 주세요";if(!F.gender)return"성별을 골라 주세요"}
   if(n===2&&!F.exam.length)return"준비하는 시험을 하나 이상 골라 주세요";
   if(n===3&&!F.slots.length)return"공부하는 시간대를 하나 이상 골라 주세요";
   if(n===5){if(!$("#aKakao").value.trim())return"매칭 연락 받을 카카오톡 ID를 적어 주세요";if(!$("#aAgreePriv").checked)return"개인정보 보관에 동의해야 신청할 수 있어요";if(F.mode==="deposit"&&!$("#aAgreeDep").checked)return"계약금 규칙에 동의해 주세요"}
@@ -363,9 +366,10 @@ $("#nextBtn").onclick=async()=>{
 ["#aNick","#aDept","#aCollege","#aStrict"].forEach(s=>$(s).addEventListener("input",()=>{if(step===5)drawContract()}));
 async function submitApp(){
   if(S.ch.partner.uid){$("#formErr").textContent="진행 중인 듀오가 끝난 뒤에 다시 신청할 수 있어요";$("#formErr").hidden=false;return}
-  const a={uid:ME.uid,email:ME.email,no:S.app?.no||String(Math.floor(1000+Math.random()*9000)),nick:$("#aNick").value.trim(),campus:F.campus,college:$("#aCollege").value,dept:$("#aDept").value.trim(),year:F.year,
+  const a={uid:ME.uid,email:ME.email,no:S.app?.no||String(Math.floor(1000+Math.random()*9000)),nick:$("#aNick").value.trim(),campus:F.campus,gender:F.gender,mailOk:$("#aAgreeMail").checked,paid:false,college:$("#aCollege").value,dept:$("#aDept").value.trim(),year:F.year,
     exam:F.exam,subject:$("#aSubject").value.trim(),goal:F.goal,pass:F.pass,slots:F.slots,places:F.places,talk:F.talk,pref:F.pref,mode:F.mode,deposit:F.mode==="deposit"?F.deposit:0,
     strict:$("#aStrict").checked,animal:F.animal,msg:$("#aMsg").value.trim(),kakao:$("#aKakao").value.trim(),status:"wait",createdAt:serverTimestamp()};
+  a.paid=S.app?.paid||false;
   const btn=$("#nextBtn"); btn.disabled=true;
   try{await setDoc(doc(db,"applications",ME.uid),a)}
   catch(e){btn.disabled=false;$("#formErr").textContent="신청서를 저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.";$("#formErr").hidden=false;return}
@@ -373,6 +377,7 @@ async function submitApp(){
   $("#applyForm").hidden=true; $("#applyDone").hidden=false;
   $("#tNo").textContent="#"+a.no;
   $("#tSum").textContent=`${a.nick} · ${a.campus} · 하루 ${hm(a.goal)} · ${a.mode==="deposit"?"계약금 "+won(a.deposit):"상품 모드"}`;
+  const db2=$("#doneBank");db2.hidden=a.mode!=="deposit";if(a.mode==="deposit")db2.innerHTML=bankHtml(a.deposit).replace("(제출 후 표시)","(#"+a.no+")");
   drawChat(); confetti(innerWidth/2,innerHeight*.3,90);
 }
 function drawChat(){const l=$("#chatLink");if(chatUrl&&/^https:\/\//.test(chatUrl)){l.href=chatUrl;l.hidden=false}else l.hidden=true}
@@ -380,7 +385,7 @@ $("#reapply").onclick=()=>{$("#applyForm").hidden=false;$("#applyDone").hidden=t
 $("#goHome").onclick=()=>go("home");
 function loadForm(){
   if(!S.app)return; const a=S.app;
-  Object.assign(F,{campus:a.campus,year:a.year,exam:a.exam,goal:a.goal,pass:a.pass,slots:a.slots,places:a.places,talk:a.talk,pref:a.pref,mode:a.mode,deposit:a.deposit||10000,animal:a.animal});
+  Object.assign(F,{campus:a.campus,gender:a.gender||null,year:a.year,exam:a.exam,goal:a.goal,pass:a.pass,slots:a.slots,places:a.places,talk:a.talk,pref:a.pref,mode:a.mode,deposit:a.deposit||10000,animal:a.animal});
   $("#aNick").value=a.nick;$("#aDept").value=a.dept||"";$("#aSubject").value=a.subject||"";$("#aMsg").value=a.msg||"";$("#aKakao").value=a.kakao||"";$("#aStrict").checked=!!a.strict;
   fillColleges(); $("#aCollege").value=a.college;
 }
@@ -511,8 +516,17 @@ function suggest(){
   return out;
 }
 const side=a=>`<div class="side"><img src="${SPR[a.animal]?.study||SPR.panda.study}" alt=""><b>${esc(a.nick)}</b><span class="muted">${esc(a.college)} ${esc(a.year||"")}</span><span class="muted tnum">${hm(a.goal)} · ${a.mode==="deposit"?won(a.deposit):"상품"}</span></div>`;
-const card=(a,extra="")=>`<div class="app-card"><img src="${SPR[a.animal]?.sleep||SPR.panda.sleep}" alt=""><div class="meta"><b>${esc(a.nick)}</b> <span class="muted">#${esc(a.no)}</span><div class="muted">${esc(a.campus)} · ${esc(a.college)} ${esc(a.dept)} ${esc(a.year||"")}</div><div class="muted">${hm(a.goal)} · ${esc((a.slots||[]).join(", "))}</div><div class="muted">카톡 ${esc(a.kakao)} · ${esc(a.email)}</div></div>${extra}</div>`;
-const pick=a=>({uid:a.uid,nick:a.nick,animal:a.animal,goal:a.goal,pass:a.pass,mode:a.mode,deposit:a.deposit||0,strict:!!a.strict,msg:a.msg||"",kakao:a.kakao,email:a.email});
+const card=(a,extra="")=>`<div class="app-card"><img src="${SPR[a.animal]?.sleep||SPR.panda.sleep}" alt=""><div class="meta"><b>${esc(a.nick)}</b> <span class="muted">#${esc(a.no)}</span><div class="muted">${esc(a.campus)} · ${esc(a.college)} ${esc(a.dept)} ${esc(a.year||"")}</div><div class="muted">${hm(a.goal)} · ${esc((a.slots||[]).join(", "))}</div><div class="muted">${esc(a.gender||"-")} · 카톡 ${esc(a.kakao)} · ${esc(a.email)}</div>${a.mode==="deposit"?`<div class="${a.paid?"paid":"unpaid"}">${won(a.deposit)} ${a.paid?"입금 완료":"입금 대기"} <button class="btn sm" data-paid="${a.uid}" data-v="${a.paid?0:1}" type="button">${a.paid?"취소":"입금 확인"}</button></div>`:""}</div>${extra}</div>`;
+const pick=a=>({email:a.email,gender:a.gender||"",uid:a.uid,nick:a.nick,animal:a.animal,goal:a.goal,pass:a.pass,mode:a.mode,deposit:a.deposit||0,strict:!!a.strict,msg:a.msg||"",kakao:a.kakao,email:a.email});
+function mailHref(m,kind){
+  const to=[m.a.email,m.b.email].filter(Boolean).join(",");
+  const dep=m.a.mode==="deposit";
+  const subj=kind==="success"?"[듀오 메이트] 목표 달성을 축하해요!":"[듀오 메이트] 1주 챌린지 결과 안내";
+  const body=kind==="success"
+    ?`${m.a.nick}님, ${m.b.nick}님 안녕하세요. 듀오 메이트 운영진입니다.\n\n1주 챌린지 목표를 달성하셨어요! ${dep?"계약금 환급·분배금은 카카오톡으로 받으실 계좌를 알려 주시면 송금해 드릴게요.":"상품은 목표 시간에 맞춰 선택하실 수 있어요. 카카오톡으로 연락 주세요."}\n\n전남대학교 창업동아리 미르`
+    :`${m.a.nick}님, ${m.b.nick}님 안녕하세요. 듀오 메이트 운영진입니다.\n\n이번 챌린지는 목표에 조금 못 미쳤어요. 다음 주에 다시 도전해 주세요!\n\n전남대학교 창업동아리 미르`;
+  return `mailto:${to}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+}
 function renderAdmin(){
   const wait=APPS.filter(a=>a.status!=="matched"), open=REPORTS.filter(r=>r.status==="open");
   $("#stWait").textContent=wait.length; $("#stDone").textContent=MATCHES.length; $("#stRep").textContent=open.length;
@@ -530,8 +544,9 @@ function renderAdmin(){
   pe.innerHTML=pairs.length?pairs.map((p,i)=>`<div class="pair">${side(p.a)}<div class="score tnum">${p.s}<br><span class="small muted">점</span></div>${side(p.b)}<div class="why">${esc(p.why.join(" · ")||"조건이 비슷해요")}</div><div class="act"><button class="btn dark sm" data-pair="${i}" type="button">이 듀오로 확정</button></div></div>`).join(""):'<div class="empty">같은 캠퍼스에 대기 중인 신청자가 2명 이상이면 추천이 떠요.</div>';
   pe.querySelectorAll("[data-pair]").forEach(b=>b.onclick=()=>confirmPair(pairs[+b.dataset.pair],b));
   $("#waitList").innerHTML=wait.length?wait.map(a=>card(a,`<button class="btn sm" data-del="${a.uid}" type="button">삭제</button>`)).join(""):'<div class="empty">대기 중인 신청자가 없어요.</div>';
+  $$("#waitList [data-paid]").forEach(b=>b.onclick=async()=>{try{await updateDoc(doc(db,"applications",b.dataset.paid),{paid:b.dataset.v==="1"})}catch(e){toast("저장하지 못했어요")}});
   $("#waitList").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{if(!b.dataset.armed){b.dataset.armed=1;b.textContent="정말 삭제";b.className="btn dark sm";return}try{await deleteDoc(doc(db,"applications",b.dataset.del));toast("삭제했어요")}catch(e){toast("삭제하지 못했어요")}});
-  $("#doneList").innerHTML=MATCHES.length?MATCHES.map(m=>`<div class="pair">${side(m.a)}<div class="score tnum">${m.score}</div>${side(m.b)}<div class="why">${esc(m.start)} 시작 · 카톡 ${esc(m.a.kakao)} / ${esc(m.b.kakao)}</div><div class="act"><button class="btn sm" data-endm="${m.id}" type="button">매칭 종료</button></div></div>`).join(""):'<div class="empty">진행 중인 듀오가 없어요.</div>';
+  $("#doneList").innerHTML=MATCHES.length?MATCHES.map(m=>`<div class="pair">${side(m.a)}<div class="score tnum">${m.score}</div>${side(m.b)}<div class="why">${esc(m.start)} 시작 · 카톡 ${esc(m.a.kakao)} / ${esc(m.b.kakao)}</div><div class="act"><a class="btn sm" style="text-decoration:none" href="${mailHref(m,"success")}">달성 안내 메일</a> <a class="btn sm" style="text-decoration:none" href="${mailHref(m,"fail")}">미달성 안내 메일</a> <button class="btn sm" data-endm="${m.id}" type="button">매칭 종료</button></div></div>`).join(""):'<div class="empty">진행 중인 듀오가 없어요.</div>';
   $("#doneList").querySelectorAll("[data-endm]").forEach(b=>b.onclick=()=>endMatch(b.dataset.endm,b));
 }
 async function confirmPair(p,btn){
@@ -555,6 +570,27 @@ async function endMatch(id,btn){
     await b.commit(); toast("매칭을 종료했어요");
   }catch(e){btn.disabled=false;toast("종료하지 못했어요")}
 }
+async function sha(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function pinOk(){try{return sessionStorage.getItem("dm_pin")==="1"}catch(e){return false}}
+function drawPin(){const ok=pinOk();$("#pinGate").hidden=ok;$("#adminBody").hidden=!ok}
+$("#pinBtn").onclick=async()=>{if(await sha($("#pinIn").value.trim())===ADMIN_PIN_SHA256){try{sessionStorage.setItem("dm_pin","1")}catch(e){}$("#pinErr").hidden=true;$("#pinIn").value="";drawPin();renderAdmin()}else{$("#pinErr").hidden=false;shake($("#pinGate"))}};
+$("#pinIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#pinBtn").click()});
+$("#csvBtn").onclick=()=>{const cols=["no","nick","email","gender","campus","college","dept","year","goal","pass","mode","deposit","paid","kakao","status"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const t=[cols.join(","),...APPS.map(a=>cols.map(c=>q(a[c])).join(","))].join("\n");
+  const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+t],{type:"text/csv"}));l.download="duomate_applications.csv";l.click()};
+$("#credit").textContent=CREDIT;
+/* chat */
+let chatUnsub=null,chatMatch=null;
+function drawChatPanel(){
+  const p=$("#chatPanel");p.hidden=!MATCH;
+  if(!MATCH){chatUnsub?.();chatUnsub=null;chatMatch=null;return}
+  if(chatMatch===MATCH.id)return; chatUnsub?.(); chatMatch=MATCH.id;
+  chatUnsub=onSnapshot(query(collection(db,"matches",MATCH.id,"msgs"),orderBy("createdAt","asc")),s=>{
+    const l=$("#chatLog");l.innerHTML=s.docs.map(d=>{const m=d.data();return `<div class="${m.uid===ME.uid?"me":""}">${esc(m.text)}</div>`}).join("");l.scrollTop=l.scrollHeight},()=>{});
+}
+$("#chatSend").onclick=async()=>{const t=$("#chatIn").value.trim();if(!t||!MATCH)return;$("#chatIn").value="";
+  try{await addDoc(collection(db,"matches",MATCH.id,"msgs"),{uid:ME.uid,text:t.slice(0,300),createdAt:serverTimestamp()})}catch(e){toast("보내지 못했어요")}};
+$("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#chatSend").click()});
 $("#rematch").onclick=()=>{renderAdmin();toast("다시 계산했어요")};
 $("#saveChat").onclick=async()=>{const v=$("#chatUrl").value.trim();if(v&&!/^https:\/\//.test(v)){toast("https:// 로 시작하는 주소를 넣어 주세요");return}try{await setDoc(doc(db,"config","public"),{chat:v});toast("저장했어요")}catch(e){toast("저장하지 못했어요")}};
 function startAdmin(){
@@ -567,7 +603,7 @@ function startAdmin(){
 function go(v){
   $$("[data-view]").forEach(s=>s.hidden=s.dataset.view!==v);
   $$("[data-tab]").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===v));
-  if(v==="home")render(); if(v==="cal")renderCal(); if(v==="apply"){drawSegs();drawPicker();showStep()} if(v==="admin")renderAdmin();
+  if(v==="home")render(); if(v==="cal")renderCal(); if(v==="apply"){drawSegs();drawPicker();showStep()} if(v==="admin"){drawPin();renderAdmin()}
   scrollTo(0,0);
 }
 $$("[data-tab]").forEach(b=>b.onclick=()=>go(b.dataset.tab));

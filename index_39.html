@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>듀오 메이트</title>
+<meta name="description" content="전남대 학우와 1주일 1:1 공부 듀오. 같이 켜면 버닝 모드.">
+<meta name="theme-color" content="#16262A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23EE5A1C'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E듀%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===== AUTH ===== -->
+<main class="auth" id="authView" hidden>
+  <div class="hero">
+    <div class="sticker" data-s="fire"><img id="authImg" alt=""></div>
+    <div class="brand">듀오<b>메이트</b></div>
+    <p class="muted">전남대 학우와 1주일 1:1 공부 듀오</p>
+  </div>
+
+  <div class="panel" id="authForm">
+    <div class="authtabs"><button type="button" data-auth="signup" aria-pressed="true">회원가입</button><button type="button" data-auth="login" aria-pressed="false">로그인</button></div>
+    <label class="field"><span class="label">전남대 이메일</span>
+      <div class="mailrow"><input type="text" id="emailId" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="학교 메일 아이디"><span>@jnu.ac.kr</span></div>
+    </label>
+    <label class="field"><span class="label">비밀번호</span><input type="password" id="pw" autocomplete="new-password" placeholder="8자 이상"></label>
+    <label class="field" id="pw2Wrap"><span class="label">비밀번호 확인</span><input type="password" id="pw2" autocomplete="new-password"></label>
+    <label class="check" id="termsWrap"><input type="checkbox" id="terms"><span>만 14세 이상이며, 전남대 재학생 확인을 위해 학교 이메일을 수집하는 것에 동의합니다.</span></label>
+    <p class="err" id="authErr" hidden></p>
+    <button class="btn primary" id="authBtn" type="button">인증 메일 받기</button>
+    <button class="linkbtn" id="forgotBtn" type="button" hidden>비밀번호를 잊었어요</button>
+  </div>
+
+  <div class="panel" id="verifyBox" hidden>
+    <h2>메일함을 확인해 주세요</h2>
+    <p><b id="verifyMail"></b> 로 인증 메일을 보냈어요. 메일 속 링크를 누른 뒤 아래 버튼을 눌러 주세요.</p>
+    <p class="small muted">메일이 안 보이면 스팸함도 확인해 주세요. 학교 메일은 도착까지 몇 분 걸릴 수 있어요.</p>
+    <button class="btn primary" id="verifiedBtn" type="button">인증했어요</button>
+    <div class="navrow"><button class="btn ghost sm" id="resendBtn" type="button">메일 다시 보내기</button><button class="btn ghost sm" id="logoutBtn2" type="button">다른 메일로 가입</button></div>
+    <p class="err" id="verifyErr" hidden></p>
+  </div>
+  <p class="src" style="text-align:center">창업동아리 미르 · 린스타트업 프로젝트</p>
+</main>
+
+<!-- ===== APP ===== -->
+<div class="app" id="appView" hidden>
+  <header class="dbar">
+    <div class="brand">듀오<b>메이트</b></div>
+    <div class="dchip"><span id="dchipName">중간고사</span><strong class="tnum" id="dchipD">D-5</strong></div>
+  </header>
+
+  <!-- HOME -->
+  <section data-view="home">
+    <div class="panel" id="waitPanel" hidden>
+      <div class="row"><h3 id="waitTitle">매칭 대기 중</h3><span class="pill gold" id="waitNo"></span></div>
+      <p class="small" id="waitTxt"></p>
+    </div>
+    <div class="panel">
+      <div class="row"><h2 id="chTitle">1주 챌린지</h2><span class="pill" id="chMode"></span></div>
+      <div class="stage">
+        <div class="mate"><div class="sticker" id="meSt"><img id="meImg" alt=""></div><div class="mname">나 · <span id="meNick"></span></div><div class="mstat tnum" id="meStat"></div></div>
+        <div class="mate"><div class="sticker" id="ptSt"><img id="ptImg" alt=""></div><div class="mname" id="ptNick"></div><div class="mstat tnum" id="ptStat"></div></div>
+      </div>
+      <div class="partner-actions" id="ptActions" hidden><button class="linkbtn" id="reportPartner" type="button">파트너 신고하기</button></div>
+      <div class="burnbar" id="burnbar" hidden>둘 다 공부 중 · 버닝 모드 경험치 2배</div>
+      <div class="xp">
+        <div class="row small"><span>공동 캐릭터 <b id="lv">Lv.1</b></span><span class="muted tnum" id="xpTxt"></span></div>
+        <div class="track"><div class="fill fl" id="xpFill"></div></div>
+      </div>
+      <button class="btn primary" id="startBtn" type="button">집중 시작</button>
+    </div>
+    <div class="panel">
+      <div class="row"><h3>이번 주 기록</h3><span class="small muted tnum" id="weekSum"></span></div>
+      <div class="week" id="week"></div>
+      <div class="xp">
+        <div class="row small"><span>오늘 목표 <b class="tnum" id="todayGoal"></b></span><span class="tnum muted" id="todayDone"></span></div>
+        <div class="track"><div class="fill" id="todayFill"></div></div>
+      </div>
+    </div>
+    <div class="panel" id="chatPanel" hidden>
+      <h3>파트너와 1:1 채팅</h3>
+      <div class="chatlog" id="chatLog"></div>
+      <div class="chatrow"><input type="text" id="chatIn" maxlength="300" placeholder="응원 한마디 (연락처 강요 금지)"><button class="btn dark sm" id="chatSend" type="button">보내기</button></div>
+    </div>
+    <div class="panel">
+      <div class="row"><h3>정산 예상</h3><span class="pill" id="settlePill"></span></div>
+      <div class="settle">
+        <div><span class="label">달성 시</span><strong class="tnum" id="sWin"></strong><span class="small muted" id="sWinSub"></span></div>
+        <div><span class="label">미달성 시</span><strong class="tnum" id="sLose"></strong><span class="small muted" id="sLoseSub"></span></div>
+      </div>
+      <p class="small muted" id="settleRule"></p>
+    </div>
+    <p class="note" id="demoNote"></p>
+  </section>
+
+  <!-- CALENDAR -->
+  <section data-view="cal" hidden>
+    <div class="panel">
+      <div class="row"><h2>전남대 학사일정</h2><span class="pill on" id="calSrcPill">2026-2학기</span></div>
+      <div class="calhead"><button id="pm" type="button" aria-label="이전 달">‹</button><h3 class="tnum" id="calTitle"></h3><button id="nm" type="button" aria-label="다음 달">›</button></div>
+      <div class="cal" id="cal"></div>
+      <div class="legend"><span><i style="background:var(--flame-soft)"></i>중간고사</span><span><i style="background:color-mix(in srgb,var(--bad) 16%,transparent)"></i>기말고사</span><span><i style="background:var(--teal-soft)"></i>학사 행사</span><span><i style="box-shadow:inset 0 -3px 0 var(--gold);background:var(--sunk)"></i>에너지 보급소</span><span><i style="background:var(--teal);border-radius:50%;width:8px;height:8px"></i>목표 달성</span></div>
+      <div class="daynote" id="dayNote">날짜를 누르면 그날 일정이 보여요.</div>
+      <div class="navrow"><button class="btn dark" id="icsBtn" type="button">내 폰 캘린더에 추가</button></div>
+      <p class="src">구글·아이폰 캘린더로 가져올 수 있는 .ics 파일을 받습니다. 시험 7일 전·1일 전 알림이 들어 있어요.</p>
+    </div>
+    <div class="panel">
+      <h3>다가오는 일정 · 알림</h3>
+      <ul class="list" id="alerts"></ul>
+    </div>
+    <div class="panel">
+      <h3>우리 과 시험 일정이 다르다면</h3>
+      <p class="small muted">학과·교수님마다 시험 주가 다를 수 있어요. 고치면 D-day와 알림이 내 일정으로 바뀝니다.</p>
+      <div class="grid2">
+        <label class="field"><span class="label">중간고사 시작</span><input type="date" id="midS"></label>
+        <label class="field"><span class="label">중간고사 끝</span><input type="date" id="midE"></label>
+        <label class="field"><span class="label">기말고사 시작</span><input type="date" id="finS"></label>
+        <label class="field"><span class="label">기말고사 끝</span><input type="date" id="finE"></label>
+      </div>
+      <button class="btn ghost sm" id="calReset" type="button">전남대 공식 일정으로 되돌리기</button>
+      <p class="src">출처: <a href="https://mech.jnu.ac.kr/mech/8197/subview.do" target="_blank" rel="noopener">전남대학교 학사일정 (2026학년도 2학기)</a>. 변경 공지는 학교 홈페이지에서 확인하세요.</p>
+    </div>
+  </section>
+
+  <!-- APPLY -->
+  <section data-view="apply" hidden>
+    <div class="panel" id="applyForm">
+      <div class="row"><h2>듀오 신청서</h2><span class="small muted tnum" id="stepTxt">1 / 5</span></div>
+      <div class="steps" id="steps"><i></i><i></i><i></i><i></i><i></i></div>
+
+      <fieldset data-step="1">
+        <legend><h3>나는 누구?</h3></legend>
+        <label class="field"><span class="label">닉네임 *</span><input type="text" id="aNick" maxlength="10" placeholder="예: 새벽의 판다"><span class="hint">파트너에게 보이는 이름이에요. 실명은 쓰지 마세요.</span></label>
+        <div class="field"><span class="label">성별 *</span><div class="seg" data-k="gender" data-one></div><span class="hint">매칭 참고용이며 파트너에게는 보이지 않아요.</span></div>
+        <div class="field"><span class="label">캠퍼스 *</span><div class="seg" data-k="campus" data-one></div></div>
+        <label class="field"><span class="label">단과대학 *</span><select id="aCollege"></select></label>
+        <label class="field"><span class="label">학과</span><input type="text" id="aDept" maxlength="20" placeholder="예: 해양경찰학과"></label>
+        <div class="field"><span class="label">학년 *</span><div class="seg" data-k="year" data-one></div></div>
+        <div class="field"><span class="label">내 캐릭터 *</span><div class="picker" id="picker"></div></div>
+      </fieldset>
+
+      <fieldset data-step="2" hidden>
+        <legend><h3>무엇을 공부하나요?</h3></legend>
+        <div class="field"><span class="label">준비하는 시험 * (여러 개)</span><div class="seg" data-k="exam"></div></div>
+        <label class="field"><span class="label">과목 · 공부할 내용</span><input type="text" id="aSubject" maxlength="40" placeholder="예: 형법총론, 해양법 중간 범위"></label>
+        <div class="field"><span class="label">하루 목표 시간 *</span><div class="seg" data-k="goal" data-one></div></div>
+        <div class="field"><span class="label">7일 중 며칠 채우면 성공?</span><div class="seg" data-k="pass" data-one></div><span class="hint">처음이면 5일을 추천해요. 하루 쉬어도 실패가 아니에요.</span></div>
+      </fieldset>
+
+      <fieldset data-step="3" hidden>
+        <legend><h3>어떻게 공부하나요?</h3></legend>
+        <div class="field"><span class="label">주로 공부하는 시간 * (여러 개)</span><div class="seg" data-k="slots"></div></div>
+        <div class="field"><span class="label">주로 공부하는 곳 (여러 개)</span><div class="seg" data-k="places"></div></div>
+        <div class="field"><span class="label">파트너와 연락은</span><div class="seg" data-k="talk" data-one></div></div>
+        <div class="field"><span class="label">파트너 조건</span><div class="seg" data-k="pref" data-one></div></div>
+      </fieldset>
+
+      <fieldset data-step="4" hidden>
+        <legend><h3>무엇을 걸까요?</h3></legend>
+        <div class="modes">
+          <button type="button" class="mode" data-mode="prize" aria-pressed="false"><span class="t">상품 모드</span><span class="d">무료. 달성하면 제휴처 음료 쿠폰.</span></button>
+          <button type="button" class="mode" data-mode="deposit" aria-pressed="true"><span class="t">계약금 모드</span><span class="d">돈을 걸고 시작. 달성하면 환급 + 보너스.</span></button>
+        </div>
+        <div class="field" id="depField"><span class="label">계약금</span><div class="seg" data-k="deposit" data-one></div><span class="hint">같은 금액을 건 사람끼리 우선 매칭돼요.</span></div>
+        <label class="check"><input type="checkbox" id="aStrict" checked><span><b>엄격 모드</b> · 허용 앱 없음. 타이머 중 화면을 벗어나면 이탈로 기록되고, 하루 3회 이탈하면 그날은 미달성입니다.</span></label>
+      </fieldset>
+
+      <fieldset data-step="5" hidden>
+        <legend><h3>마지막 확인</h3></legend>
+        <label class="field"><span class="label">파트너에게 한마디</span><input type="text" id="aMsg" maxlength="40" placeholder="예: 저녁 9시에 같이 켜요!"></label>
+        <label class="field"><span class="label">매칭 연락 받을 카카오톡 ID *</span><input type="text" id="aKakao" maxlength="30" placeholder="운영진만 봅니다"></label>
+        <div class="contract" id="contract"></div>
+        <div class="bankbox" id="bankBox" hidden></div>
+        <label class="check"><input type="checkbox" id="aAgreePriv"><span>매칭을 위해 닉네임·단과대·학과·학년·카카오톡 ID를 운영진이 보관하고, 학기 종료 후 파기하는 것에 동의합니다. *</span></label>
+        <label class="check"><input type="checkbox" id="aAgreeMail" checked><span>매칭 결과·달성 안내를 학교 메일로 받겠습니다.</span></label>
+        <label class="check" id="agreeDepWrap"><input type="checkbox" id="aAgreeDep"><span>계약금 규칙(미달성 시 몰수, 중도 해지 시 환급 없음)을 이해했습니다. *</span></label>
+      </fieldset>
+
+      <p class="err" id="formErr" hidden></p>
+      <div class="navrow"><button class="btn ghost" id="prevBtn" type="button">이전</button><button class="btn dark" id="nextBtn" type="button">다음</button></div>
+    </div>
+
+    <div class="panel" id="applyDone" hidden>
+      <div class="ticket">
+        <span class="label" style="color:inherit;opacity:.7">신청 번호</span>
+        <span class="no tnum" id="tNo"></span>
+        <span class="small" id="tSum"></span>
+      </div>
+      <p class="small">신청서가 운영진에게 전달됐어요. 시간대·목표가 비슷한 학우를 찾으면 앱 홈 화면과 카카오톡으로 알려 드려요.</p>
+      <div class="bankbox" id="doneBank" hidden></div>
+      <a class="btn dark" id="chatLink" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none" hidden>운영진 오픈채팅 들어가기</a>
+      <div class="navrow"><button class="btn ghost" id="reapply" type="button">신청서 고치기</button><button class="btn dark" id="goHome" type="button">홈으로</button></div>
+    </div>
+  </section>
+
+  <!-- MY / RULES -->
+  <section data-view="info" hidden>
+    <div class="panel">
+      <div class="row"><h2>내 계정</h2><span class="pill on">전남대 인증</span></div>
+      <p class="small" id="myMail"></p>
+      <div class="navrow"><button class="btn ghost" id="logoutBtn" type="button">로그아웃</button><button class="btn ghost" id="reportGeneral" type="button">문제 신고하기</button></div>
+    </div>
+    <div class="panel">
+      <h2>이용 규칙</h2>
+      <p>신청서를 내면 운영진이 시간대·목표·장소·캠퍼스가 비슷한 학우와 1:1로 묶어 드려요. 매칭되면 홈 화면에 파트너가 나타나고, 그날부터 7일간 챌린지가 진행됩니다.</p>
+      <p>계약금 모드는 7일 뒤 정산합니다. 달성자는 계약금 전액을 돌려받고, 미달성자의 계약금 중 70%를 같은 주 달성자끼리 나눕니다. 나머지 30%는 에너지 보급소 음료 예산으로 씁니다.</p>
+      <p>상품 모드는 무료입니다. 달성하면 교내 제휴처 음료 쿠폰 1장을 받고, 실패해도 잃는 것은 없어요.</p>
+      <p>욕설·성희롱, 개인 연락 강요, 타이머 조작, 계약금 관련 사기는 신고할 수 있어요. 운영진이 확인 후 매칭 해제나 이용 정지를 합니다.</p>
+    </div>
+    <div class="panel">
+      <h3>집중 잠금은 이렇게 동작해요</h3>
+      <p class="small">웹 버전은 타이머 화면을 떠나는 순간을 감지해 이탈로 기록합니다. 다른 앱 실행 자체를 막는 기능은 설치형 앱에서 제공할 예정입니다.</p>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section data-view="admin" hidden>
+    <div class="panel" id="pinGate">
+      <h2>운영자 모드</h2>
+      <label class="field"><span class="label">비밀번호</span><input type="password" id="pinIn" inputmode="numeric" maxlength="12" autocomplete="off"></label>
+      <p class="err" id="pinErr" hidden>비밀번호가 달라요</p>
+      <button class="btn dark" id="pinBtn" type="button">열기</button>
+    </div>
+    <div id="adminBody" hidden>
+    <div class="panel">
+      <div class="row"><h2>운영진 보드</h2><span class="pill on">운영진 전용</span></div>
+      <div class="stats"><div><span class="label">대기</span><strong class="tnum" id="stWait">0</strong></div><div><span class="label">진행 중 듀오</span><strong class="tnum" id="stDone">0</strong></div><div><span class="label">미처리 신고</span><strong class="tnum" id="stRep">0</strong></div></div>
+      <p class="small muted" id="stMix"></p>
+    </div>
+    <div class="panel">
+      <h3>미처리 신고</h3>
+      <div class="applist" id="repList"></div>
+    </div>
+    <div class="panel">
+      <div class="row"><h3>추천 매칭</h3><button class="btn sm" id="rematch" type="button">다시 계산</button></div>
+      <div class="applist" id="pairs"></div>
+    </div>
+    <div class="panel">
+      <h3>매칭 대기 중인 신청자</h3>
+      <div class="applist" id="waitList"></div>
+    </div>
+    <div class="panel">
+      <h3>진행 중인 듀오</h3>
+      <div class="applist" id="doneList"></div>
+    </div>
+    <div class="panel">
+      <h3>오픈채팅 링크</h3>
+      <label class="field"><span class="label">신청 완료 화면에 보여 줄 링크</span><input type="text" id="chatUrl" placeholder="https://open.kakao.com/o/..."></label>
+      <button class="btn dark sm" id="saveChat" type="button">저장</button>
+    </div>
+    <div class="panel">
+      <h3>전체 신청서 내려받기</h3>
+      <button class="btn sm" id="csvBtn" type="button">CSV 저장</button>
+    </div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="메뉴" id="tabNav" hidden><div id="tabbar">
+  <button type="button" data-tab="home" aria-current="true"><span class="ic">◉</span>홈</button>
+  <button type="button" data-tab="cal"><span class="ic">▦</span>학사일정</button>
+  <button type="button" data-tab="apply"><span class="ic">＋</span>신청</button>
+  <button type="button" data-tab="info"><span class="ic">≡</span>내 정보</button>
+  <button type="button" data-tab="admin" hidden><span class="ic">★</span>운영</button>
+</div></nav>
+
+<!-- report sheet -->
+<div class="modal" id="reportModal" hidden role="dialog" aria-modal="true" aria-labelledby="repTitle">
+  <div class="sheet">
+    <div class="row"><h2 id="repTitle">신고하기</h2><button class="btn sm" id="repClose" type="button">닫기</button></div>
+    <p class="small muted" id="repTarget"></p>
+    <div class="field"><span class="label">어떤 문제인가요? *</span><div class="seg" id="repReasons"></div></div>
+    <label class="field"><span class="label">자세한 내용 *</span><textarea id="repDetail" maxlength="500" placeholder="언제, 무슨 일이 있었는지 적어 주세요. 캡처가 있으면 오픈채팅으로 운영진에게 보내 주세요."></textarea></label>
+    <label class="check" id="repUnmatchWrap"><input type="checkbox" id="repUnmatch"><span>이 파트너와 매칭 해제를 원해요</span></label>
+    <p class="small muted">신고한 사람은 상대에게 알려지지 않아요. 허위 신고는 이용이 제한될 수 있어요.</p>
+    <p class="err" id="repErr" hidden></p>
+    <button class="btn primary" id="repSend" type="button">신고 접수</button>
+  </div>
+</div>
+
+<div class="focus" id="focus" hidden>
+  <div class="label" style="color:inherit;opacity:.7" id="fLabel">엄격 모드 · 허용 앱 없음</div>
+  <div class="sticker" id="fSt"><img id="fImg" alt=""></div>
+  <div class="clock" id="fClock">00:00:00</div>
+  <div class="pill fire" id="fBurn" hidden>버닝 모드 · 파트너도 공부 중</div>
+  <div class="warn" id="fWarn" hidden></div>
+  <div class="lockline">이 화면을 벗어나면 이탈로 기록되고 파트너 화면의 캐릭터가 울어요.</div>
+  <button class="btn primary" id="fStop" type="button">공부 끝내기</button>
+</div>
+<div class="toast" id="toast" hidden></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<footer class="credit" id="credit"></footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
