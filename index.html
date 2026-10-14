@@ -43,10 +43,16 @@
     </div>
   </div>
   <div class="panel" id="verifyBox" hidden>
-    <h2>메일함을 확인해 주세요</h2>
-    <p><b id="verifyMail"></b> 로 인증 메일을 보냈어요. 메일 속 링크를 누른 뒤 아래 버튼을 눌러 주세요.</p>
-    <p class="small muted">메일이 안 보이면 스팸함도 확인해 주세요. 학교 메일은 도착까지 몇 분 걸릴 수 있어요.</p>
-    <button class="btn primary" id="verifiedBtn" type="button">인증했어요</button>
+    <h2>가입 확인이 필요해요</h2>
+    <p><b id="verifyMail"></b></p>
+    <p class="small">인증 메일이 오지 않아도 괜찮아요. 이름과 카톡 ID를 남기면 운영진이 확인하고 승인해 드려요.</p>
+    <label class="field"><span class="label">이름 *</span><input type="text" id="pName" maxlength="12" placeholder="실명"></label>
+    <label class="field"><span class="label">카카오톡 ID *</span><input type="text" id="pKakao" maxlength="30"></label>
+    <button class="btn primary" id="pSend" type="button">승인 요청 보내기</button>
+    <p class="small" id="pendState" hidden>요청을 보냈어요. 운영진이 승인하면 이 화면이 자동으로 바뀌어요. 급하면 운영진에게 카톡으로 알려 주세요.</p>
+    <hr style="border:0;border-top:1px solid #0002;margin:14px 0">
+    <p class="small muted">메일 인증으로 들어가려면: <b>인증 메일(스팸함도 확인) 링크를 누른 뒤</b> 아래 버튼을 누르세요.</p>
+    <button class="btn ghost" id="verifiedBtn" type="button">인증했어요</button>
     <div class="navrow"><button class="btn ghost sm" id="resendBtn" type="button">메일 다시 보내기</button><button class="btn ghost sm" id="logoutBtn2" type="button">다른 메일로 가입</button></div>
     <p class="err" id="verifyErr" hidden></p>
   </div>
@@ -241,6 +247,10 @@
       <div class="row"><h2>운영진 보드</h2><span class="pill on">운영진 전용</span></div>
       <div class="stats"><div><span class="label">대기</span><strong class="tnum" id="stWait">0</strong></div><div><span class="label">진행 중 듀오</span><strong class="tnum" id="stDone">0</strong></div><div><span class="label">미처리 신고</span><strong class="tnum" id="stRep">0</strong></div></div>
       <p class="small muted" id="stMix"></p>
+    </div>
+    <div class="panel">
+      <div class="row"><h3>가입 승인 대기</h3><span class="small muted" id="pendCnt"></span></div>
+      <div class="applist" id="pendList"></div>
     </div>
     <div class="panel">
       <h3>미처리 신고</h3>

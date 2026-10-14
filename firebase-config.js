@@ -32,3 +32,7 @@ export const FEE_WON = 2000;        // 참가비 (환급 없음)
 export const OPS_RATE = 0.08;       // 참가비 중 운영비로 쓰는 비율 (10% 미만)
 export const PRIZE_BASE = 50000;    // 후원·동아리 예산으로 마련한 기본 상품 총액
 export const PRIZE_MAX = 5000;      // 달성자 1인당 기프티콘 상한
+
+// ⑧ 메일 인증 없이 들어올 수 있는 초대 명단 (학교 메일이 오지 않는 분 등). 운영진이 직접 믿는 사람만 넣으세요.
+//    firestore.rules 의 guestList() 와 똑같이 맞춰 주세요. 가짜 메일을 넣어도 됩니다.
+export const GUEST_EMAILS = ["parkjg0105@jnu.ac.kr"];
