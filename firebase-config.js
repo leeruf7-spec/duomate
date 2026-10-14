@@ -13,4 +13,4 @@ export const firebaseConfig = {
 export const ALLOWED_DOMAINS = ["jnu.ac.kr"];
 
 // ③ 운영진 메일 (운영 탭이 보이는 사람). firestore.rules 의 isAdmin() 목록과 똑같이 맞춰 주세요.
-export const ADMIN_EMAILS = ["haemin060621@jnu.ac.kr"];
+export const ADMIN_EMAILS = ["haemin060621@jnu.ac.kr", "leeruf7@gmail.com"];

@@ -42,7 +42,7 @@ const hm=m=>{m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?(r?`${h}�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2800)}
 function shake(el){el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake")}
-const isJnu=e=>!!e&&ALLOWED_DOMAINS.some(d=>e.toLowerCase().endsWith("@"+d));
+const isJnu=e=>!!e&&(ALLOWED_DOMAINS.some(d=>e.toLowerCase().endsWith("@"+d))||isAdminEmail(e));
 const isAdminEmail=e=>!!e&&ADMIN_EMAILS.map(x=>x.toLowerCase()).includes(e.toLowerCase());
 
 /* ================= AUTH ================= */
@@ -72,7 +72,7 @@ $("#authBtn").onclick=async()=>{
       if(pw!==$("#pw2").value) throw {code:"x",message:"비밀번호 확인이 일치하지 않아요"};
       if(!$("#terms").checked) throw {code:"x",message:"이메일 수집에 동의해 주세요"};
       const cred=await createUserWithEmailAndPassword(auth,email,pw);
-      await sendEmailVerification(cred.user);
+      if(!isAdminEmail(email)) await sendEmailVerification(cred.user);
     }else{
       await signInWithEmailAndPassword(auth,email,pw);
     }
@@ -99,7 +99,7 @@ onAuthStateChanged(auth,u=>{
   unsubAll();
   if(!u){ME=null;showAuth();return}
   if(!isJnu(u.email)){signOut(auth);authError("전남대 메일 계정만 이용할 수 있어요");return}
-  if(!u.emailVerified){showVerify(u);return}
+  if(!u.emailVerified&&!isAdminEmail(u.email)){showVerify(u);return}
   enterApp(u);
 });
 
