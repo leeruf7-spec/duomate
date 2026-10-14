@@ -5,14 +5,39 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    // 인증 완료된 전남대 메일만 통과
-    function jnu() {
-      return signedIn()
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.matches('.*@jnu[.]ac[.]kr$');
-    }
+    function adminList() { return ['haemin060621@jnu.ac.kr', 'leeruf7@gmail.com', 'admin@jnumir.kr']; }
+    // 인증 완료된 전남대 메일 + 운영진 메일만 통과
+    // 운영진: 메일 인증 없이 바로 통과
+    // 초대 명단: 메일 인증 없이 통과 (firebase-config.js 의 GUEST_EMAILS 와 같게)
+    function guestList() { return ['parkjg0105@jnu.ac.kr']; }
+    // 운영진이 승인한 학교 메일 (메일 인증이 안 되는 학생용)
+    function approved() { return exists(/databases/$(database)/documents/approved/$(request.auth.uid)); }
     function isAdmin() {
-      return jnu() && request.auth.token.email in ['haemin060621@jnu.ac.kr'];
+      return signedIn() && request.auth.token.email in adminList();
+    }
+    // 학생: 인증 완료된 전남대 메일만 통과
+    function jnu() {
+      return isAdmin() || (signedIn() && request.auth.token.email in guestList())
+        || (signedIn() && request.auth.token.email.matches('.*@jnu[.]ac[.]kr$') && approved())
+        || (signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@jnu[.]ac[.]kr$'));
+    }
+
+    // 가입 승인 요청: 본인만 작성, 운영진이 읽고 승인
+    match /pending/{uid} {
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.auth.token.email.matches('.*@jnu[.]ac[.]kr$')
+        && request.resource.data.name is string && request.resource.data.name.size() <= 12
+        && request.resource.data.kakao is string && request.resource.data.kakao.size() <= 30;
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if isAdmin();
+    }
+    match /approved/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
     }
 
     // 듀오 신청서: 문서 id = 내 uid
@@ -21,12 +46,16 @@ service cloud.firestore {
       allow create: if jnu() && request.auth.uid == uid
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == 'wait';
+        && request.resource.data.status == 'wait'
+        && request.resource.data.get('paid', false) == false
+        && request.resource.data.get('forfeit', false) == false;
       // 매칭된 뒤에는 본인이 고칠 수 없음
       allow update: if isAdmin() || (jnu() && request.auth.uid == uid
         && resource.data.status != 'matched'
         && request.resource.data.uid == uid
-        && request.resource.data.status == 'wait');
+        && request.resource.data.status == 'wait'
+        && request.resource.data.get('paid', false) == resource.data.get('paid', false)
+        && request.resource.data.get('forfeit', false) == resource.data.get('forfeit', false));
       allow delete: if isAdmin() || (jnu() && request.auth.uid == uid);
     }
 
@@ -34,6 +63,25 @@ service cloud.firestore {
     match /matches/{id} {
       allow read: if isAdmin() || (jnu() && request.auth.uid in resource.data.members);
       allow write: if isAdmin();
+    }
+
+    // 듀오 1:1 채팅: 두 사람과 운영진만
+    match /matches/{id}/msgs/{m} {
+      allow read: if isAdmin() || (jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members);
+      allow create: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 300;
+    }
+
+    // 체크인 셀카: 두 사람만 읽기(운영진도 못 봄), 본인이 올리고 본인이 삭제. 24시간 지난 것은 앱이 삭제
+    match /matches/{id}/shots/{s} {
+      allow read: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members;
+      allow create: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.img is string
+        && request.resource.data.img.size() < 80000;
+      allow delete: if jnu() && resource.data.uid == request.auth.uid;
     }
 
     // 실시간 공부 상태(공부 중 여부, 오늘 공부 시간): 인증된 학생은 읽기, 본인만 쓰기

@@ -34,11 +34,25 @@
     <button class="linkbtn" id="forgotBtn" type="button" hidden>비밀번호를 잊었어요</button>
   </div>
 
+  <div class="panel" id="admLogin">
+    <button class="linkbtn" id="admToggle" type="button">운영진 입장</button>
+    <div id="admBox" hidden>
+      <label class="field"><span class="label">운영진 비밀번호</span><input type="password" id="admPw" autocomplete="off"></label>
+      <p class="err" id="admErr" hidden></p>
+      <button class="btn dark" id="admGo" type="button">운영진으로 입장</button>
+    </div>
+  </div>
   <div class="panel" id="verifyBox" hidden>
-    <h2>메일함을 확인해 주세요</h2>
-    <p><b id="verifyMail"></b> 로 인증 메일을 보냈어요. 메일 속 링크를 누른 뒤 아래 버튼을 눌러 주세요.</p>
-    <p class="small muted">메일이 안 보이면 스팸함도 확인해 주세요. 학교 메일은 도착까지 몇 분 걸릴 수 있어요.</p>
-    <button class="btn primary" id="verifiedBtn" type="button">인증했어요</button>
+    <h2>가입 확인이 필요해요</h2>
+    <p><b id="verifyMail"></b></p>
+    <p class="small">인증 메일이 오지 않아도 괜찮아요. 이름과 카톡 ID를 남기면 운영진이 확인하고 승인해 드려요.</p>
+    <label class="field"><span class="label">이름 *</span><input type="text" id="pName" maxlength="12" placeholder="실명"></label>
+    <label class="field"><span class="label">카카오톡 ID *</span><input type="text" id="pKakao" maxlength="30"></label>
+    <button class="btn primary" id="pSend" type="button">승인 요청 보내기</button>
+    <p class="small" id="pendState" hidden>요청을 보냈어요. 운영진이 승인하면 이 화면이 자동으로 바뀌어요. 급하면 운영진에게 카톡으로 알려 주세요.</p>
+    <hr style="border:0;border-top:1px solid #0002;margin:14px 0">
+    <p class="small muted">메일 인증으로 들어가려면: <b>인증 메일(스팸함도 확인) 링크를 누른 뒤</b> 아래 버튼을 누르세요.</p>
+    <button class="btn ghost" id="verifiedBtn" type="button">인증했어요</button>
     <div class="navrow"><button class="btn ghost sm" id="resendBtn" type="button">메일 다시 보내기</button><button class="btn ghost sm" id="logoutBtn2" type="button">다른 메일로 가입</button></div>
     <p class="err" id="verifyErr" hidden></p>
   </div>
@@ -65,6 +79,7 @@
         <div class="mate"><div class="sticker" id="ptSt"><img id="ptImg" alt=""></div><div class="mname" id="ptNick"></div><div class="mstat tnum" id="ptStat"></div></div>
       </div>
       <div class="partner-actions" id="ptActions" hidden><button class="linkbtn" id="reportPartner" type="button">파트너 신고하기</button></div>
+      <div class="together" id="togBox" hidden><span class="small" id="togTxt"></span><button class="btn sm" id="togBtn" type="button">오늘 같이 공부했어요</button></div>
       <div class="burnbar" id="burnbar" hidden>둘 다 공부 중 · 버닝 모드 경험치 2배</div>
       <div class="xp">
         <div class="row small"><span>공동 캐릭터 <b id="lv">Lv.1</b></span><span class="muted tnum" id="xpTxt"></span></div>
@@ -82,6 +97,8 @@
     </div>
     <div class="panel" id="chatPanel" hidden>
       <h3>파트너와 1:1 채팅</h3>
+      <div class="shots" id="shots"></div>
+      <p class="small muted" id="shotsNote" hidden>체크인 셀카는 듀오 둘에게만 보이고 24시간 뒤 사라져요.</p>
       <div class="chatlog" id="chatLog"></div>
       <div class="chatrow"><input type="text" id="chatIn" maxlength="300" placeholder="응원 한마디 (연락처 강요 금지)"><button class="btn dark sm" id="chatSend" type="button">보내기</button></div>
     </div>
@@ -134,6 +151,7 @@
       <fieldset data-step="1">
         <legend><h3>나는 누구?</h3></legend>
         <label class="field"><span class="label">닉네임 *</span><input type="text" id="aNick" maxlength="10" placeholder="예: 새벽의 판다"><span class="hint">파트너에게 보이는 이름이에요. 실명은 쓰지 마세요.</span></label>
+        <label class="field"><span class="label">이번 학기 목표 학점 (선택)</span><select id="aGrade"><option value="">정하지 않음</option><option>4.0 이상</option><option>3.5~4.0</option><option>3.0~3.5</option><option>3.0 미만</option></select><span class="hint">나를 위한 다짐이에요. 상품과는 관계없고 성적을 확인하지도 않아요. 운영진의 매칭 참고용이에요.</span></label>
         <div class="field"><span class="label">성별 *</span><div class="seg" data-k="gender" data-one></div><span class="hint">매칭 참고용이며 파트너에게는 보이지 않아요.</span></div>
         <div class="field"><span class="label">캠퍼스 *</span><div class="seg" data-k="campus" data-one></div></div>
         <label class="field"><span class="label">단과대학 *</span><select id="aCollege"></select></label>
@@ -160,11 +178,8 @@
 
       <fieldset data-step="4" hidden>
         <legend><h3>무엇을 걸까요?</h3></legend>
-        <div class="modes">
-          <button type="button" class="mode" data-mode="prize" aria-pressed="false"><span class="t">상품 모드</span><span class="d">무료. 달성하면 제휴처 음료 쿠폰.</span></button>
-          <button type="button" class="mode" data-mode="deposit" aria-pressed="true"><span class="t">계약금 모드</span><span class="d">돈을 걸고 시작. 달성하면 환급 + 보너스.</span></button>
-        </div>
-        <div class="field" id="depField"><span class="label">계약금</span><div class="seg" data-k="deposit" data-one></div><span class="hint">같은 금액을 건 사람끼리 우선 매칭돼요.</span></div>
+        <div class="modes" style="display:none"></div>
+        <div class="field" id="depField" style="display:none"><span class="label">계약금</span><div class="seg" data-k="deposit" data-one></div><span class="hint">같은 금액을 건 사람끼리 우선 매칭돼요.</span></div>
         <label class="check"><input type="checkbox" id="aStrict" checked><span><b>엄격 모드</b> · 허용 앱 없음. 타이머 중 화면을 벗어나면 이탈로 기록되고, 하루 3회 이탈하면 그날은 미달성입니다.</span></label>
       </fieldset>
 
@@ -172,11 +187,14 @@
         <legend><h3>마지막 확인</h3></legend>
         <label class="field"><span class="label">파트너에게 한마디</span><input type="text" id="aMsg" maxlength="40" placeholder="예: 저녁 9시에 같이 켜요!"></label>
         <label class="field"><span class="label">매칭 연락 받을 카카오톡 ID *</span><input type="text" id="aKakao" maxlength="30" placeholder="운영진만 봅니다"></label>
+        <div id="refundWrap" style="display:none">
+          <label class="field"><span class="label">환급 받을 계좌 (은행 / 계좌번호 / 예금주) *</span><input type="text" id="aRefund" maxlength="60" placeholder="예: 국민 123456-78-901234 홍길동"><span class="hint">달성했을 때 환급·분배금을 보내는 데만 쓰고, 운영진만 보며 학기 종료 후 파기해요.</span></label>
+        </div>
         <div class="contract" id="contract"></div>
         <div class="bankbox" id="bankBox" hidden></div>
         <label class="check"><input type="checkbox" id="aAgreePriv"><span>매칭을 위해 닉네임·단과대·학과·학년·카카오톡 ID를 운영진이 보관하고, 학기 종료 후 파기하는 것에 동의합니다. *</span></label>
         <label class="check"><input type="checkbox" id="aAgreeMail" checked><span>매칭 결과·달성 안내를 학교 메일로 받겠습니다.</span></label>
-        <label class="check" id="agreeDepWrap"><input type="checkbox" id="aAgreeDep"><span>계약금 규칙(미달성 시 몰수, 중도 해지 시 환급 없음)을 이해했습니다. *</span></label>
+        <label class="check" id="agreeDepWrap" style="display:none"><input type="checkbox" id="aAgreeDep"><span>계약금 규칙(미달성 시 몰수·수수료 8% 공제 후 달성자에게 분배, 중도 해지 시 환급 없음)을 이해했습니다. *</span></label>
       </fieldset>
 
       <p class="err" id="formErr" hidden></p>
@@ -206,8 +224,8 @@
     <div class="panel">
       <h2>이용 규칙</h2>
       <p>신청서를 내면 운영진이 시간대·목표·장소·캠퍼스가 비슷한 학우와 1:1로 묶어 드려요. 매칭되면 홈 화면에 파트너가 나타나고, 그날부터 7일간 챌린지가 진행됩니다.</p>
-      <p>계약금 모드는 7일 뒤 정산합니다. 달성자는 계약금 전액을 돌려받고, 미달성자의 계약금 중 70%를 같은 주 달성자끼리 나눕니다. 나머지 30%는 에너지 보급소 음료 예산으로 씁니다.</p>
-      <p>상품 모드는 무료입니다. 달성하면 교내 제휴처 음료 쿠폰 1장을 받고, 실패해도 잃는 것은 없어요.</p>
+      <p>참가비는 <b>2,000원</b>이며 환급되지 않습니다. 이 중 8%는 운영비로 쓰고, 나머지는 후원 상품 예산에 더해 달성자 기프티콘 재원으로 씁니다.</p>
+      <p>7일 중 목표일수를 채우면 달성자 전원이 기프티콘을 받습니다(추첨 아님). 1인당 최대 5,000원이며, 달성자가 많으면 재원 안에서 금액이 조정돼요. 입금이 확인된 분만 지급 대상입니다.</p>
       <p>욕설·성희롱, 개인 연락 강요, 타이머 조작, 계약금 관련 사기는 신고할 수 있어요. 운영진이 확인 후 매칭 해제나 이용 정지를 합니다.</p>
     </div>
     <div class="panel">
@@ -231,6 +249,10 @@
       <p class="small muted" id="stMix"></p>
     </div>
     <div class="panel">
+      <div class="row"><h3>가입 승인 대기</h3><span class="small muted" id="pendCnt"></span></div>
+      <div class="applist" id="pendList"></div>
+    </div>
+    <div class="panel">
       <h3>미처리 신고</h3>
       <div class="applist" id="repList"></div>
     </div>
@@ -250,6 +272,16 @@
       <h3>오픈채팅 링크</h3>
       <label class="field"><span class="label">신청 완료 화면에 보여 줄 링크</span><input type="text" id="chatUrl" placeholder="https://open.kakao.com/o/..."></label>
       <button class="btn dark sm" id="saveChat" type="button">저장</button>
+    </div>
+    <div class="panel">
+      <h3>상품 재원 계산</h3>
+      <label class="field"><span class="label">이번 주 달성자 수</span><input type="number" id="achN" min="0" inputmode="numeric"></label>
+      <p class="small" id="poolTxt"></p>
+    </div>
+    <div class="panel">
+      <div class="row"><h3>무작위 학습 인증 점검</h3><button class="btn sm" id="sampleBtn" type="button">3명 뽑기</button></div>
+      <p class="small muted">진행 중인 듀오에서 무작위로 뽑아요. 카톡으로 오늘 푼 문제집·필기 사진을 요청하세요.</p>
+      <div class="applist" id="sampleList"></div>
     </div>
     <div class="panel">
       <h3>전체 신청서 내려받기</h3>
@@ -287,6 +319,7 @@
   <div class="clock" id="fClock">00:00:00</div>
   <div class="pill fire" id="fBurn" hidden>버닝 모드 · 파트너도 공부 중</div>
   <div class="warn" id="fWarn" hidden></div>
+  <div class="chkbox" id="chkBox" hidden><b>집중 체크인</b><span id="chkSec" class="tnum">60</span>초 안에 눌러 주세요<span class="small">셀카가 파트너에게만 24시간 보여요 (카메라 허용 필요)</span><button class="btn primary" id="chkBtn" type="button">여기 있어요 (셀카)</button></div>
   <div class="lockline">이 화면을 벗어나면 이탈로 기록되고 파트너 화면의 캐릭터가 울어요.</div>
   <button class="btn primary" id="fStop" type="button">공부 끝내기</button>
 </div>
