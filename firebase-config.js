@@ -16,10 +16,16 @@ export const ALLOWED_DOMAINS = ["jnu.ac.kr"];
 export const ADMIN_EMAILS = ["haemin060621@jnu.ac.kr", "leeruf7@gmail.com"];
 
 // ④ 참가비 입금 계좌 (앱 안에 표시됩니다)
-export const BANK = { name: "", no: "1002-2247-2778", holder: "" };  // name=은행명, holder=예금주를 채워 주세요
+export const BANK = { name: "토스뱅크", no: "100222472778", holder: "" };  // name=은행명, holder=예금주를 채워 주세요
 
 // ⑤ 운영 탭 잠금 비밀번호 (SHA-256). 화면 가림용일 뿐 보안은 firestore.rules 의 운영진 메일이 지킵니다.
 export const ADMIN_PIN_SHA256 = "41fb13379f751067eff5f55626e61db4863976a27f0211daec3fa2af1641f86d";
 
 // ⑥ 하단 문구
 export const CREDIT = "전남대학교 여수캠퍼스 공식 창업동아리 미르 · 실험실특화형창업선도대학 사업단 동아리 관리자 편승훈 위원 · 전남대학교 창업보육센터 소속 광주캠퍼스 동아리 담당자 · 여수캠퍼스 창업보육센터 구병우 실장님 — 도움에 감사드립니다.";
+
+// ⑦ 참가비·상품 설정 (원)
+export const FEE_WON = 2000;        // 참가비 (환급 없음)
+export const OPS_RATE = 0.08;       // 참가비 중 운영비로 쓰는 비율 (10% 미만)
+export const PRIZE_BASE = 50000;    // 후원·동아리 예산으로 마련한 기본 상품 총액
+export const PRIZE_MAX = 5000;      // 달성자 1인당 기프티콘 상한
