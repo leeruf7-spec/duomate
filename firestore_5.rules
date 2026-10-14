@@ -1,0 +1,87 @@
+rules_version = '2';
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 통째로 붙여넣고 "게시"를 누르세요.
+// isAdmin() 의 메일 목록은 firebase-config.js 의 ADMIN_EMAILS 와 똑같이 맞춰 주세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function adminList() { return ['haemin060621@jnu.ac.kr', 'leeruf7@gmail.com', 'admin@jnumir.kr']; }
+    // 인증 완료된 전남대 메일 + 운영진 메일만 통과
+    // 운영진: 메일 인증 없이 바로 통과
+    function isAdmin() {
+      return signedIn() && request.auth.token.email in adminList();
+    }
+    // 학생: 인증 완료된 전남대 메일만 통과
+    function jnu() {
+      return isAdmin() || (signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@jnu[.]ac[.]kr$'));
+    }
+
+    // 듀오 신청서: 문서 id = 내 uid
+    match /applications/{uid} {
+      allow read: if isAdmin() || (jnu() && request.auth.uid == uid);
+      allow create: if jnu() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'wait'
+        && request.resource.data.get('paid', false) == false
+        && request.resource.data.get('forfeit', false) == false;
+      // 매칭된 뒤에는 본인이 고칠 수 없음
+      allow update: if isAdmin() || (jnu() && request.auth.uid == uid
+        && resource.data.status != 'matched'
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'wait'
+        && request.resource.data.get('paid', false) == resource.data.get('paid', false)
+        && request.resource.data.get('forfeit', false) == resource.data.get('forfeit', false));
+      allow delete: if isAdmin() || (jnu() && request.auth.uid == uid);
+    }
+
+    // 확정된 듀오: 두 사람과 운영진만 읽기, 운영진만 쓰기
+    match /matches/{id} {
+      allow read: if isAdmin() || (jnu() && request.auth.uid in resource.data.members);
+      allow write: if isAdmin();
+    }
+
+    // 듀오 1:1 채팅: 두 사람과 운영진만
+    match /matches/{id}/msgs/{m} {
+      allow read: if isAdmin() || (jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members);
+      allow create: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 300;
+    }
+
+    // 체크인 셀카: 두 사람만 읽기(운영진도 못 봄), 본인이 올리고 본인이 삭제. 24시간 지난 것은 앱이 삭제
+    match /matches/{id}/shots/{s} {
+      allow read: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members;
+      allow create: if jnu() && request.auth.uid in get(/databases/$(database)/documents/matches/$(id)).data.members
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.img is string
+        && request.resource.data.img.size() < 80000;
+      allow delete: if jnu() && resource.data.uid == request.auth.uid;
+    }
+
+    // 실시간 공부 상태(공부 중 여부, 오늘 공부 시간): 인증된 학생은 읽기, 본인만 쓰기
+    match /presence/{uid} {
+      allow read: if jnu();
+      allow write: if jnu() && request.auth.uid == uid;
+    }
+
+    // 신고: 누구나(인증된 학생) 접수, 운영진만 읽기·처리
+    match /reports/{id} {
+      allow create: if jnu()
+        && request.resource.data.reporter == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.detail is string
+        && request.resource.data.detail.size() <= 500;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 오픈채팅 링크 등 공개 설정
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

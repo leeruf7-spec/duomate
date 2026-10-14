@@ -13,7 +13,7 @@ export const firebaseConfig = {
 export const ALLOWED_DOMAINS = ["jnu.ac.kr"];
 
 // ③ 운영진 메일 (운영 탭이 보이는 사람). firestore.rules 의 isAdmin() 목록과 똑같이 맞춰 주세요.
-export const ADMIN_EMAILS = ["haemin060621@jnu.ac.kr", "leeruf7@gmail.com"];
+export const ADMIN_EMAILS = ["haemin060621@jnu.ac.kr", "leeruf7@gmail.com", "admin@jnumir.kr"];
 
 // ④ 참가비 입금 계좌 (앱 안에 표시됩니다)
 export const BANK = { name: "토스뱅크", no: "100222472778", holder: "" };  // name=은행명, holder=예금주를 채워 주세요
@@ -22,6 +22,9 @@ export const BANK = { name: "토스뱅크", no: "100222472778", holder: "" };  /
 export const ADMIN_PIN_SHA256 = "41fb13379f751067eff5f55626e61db4863976a27f0211daec3fa2af1641f86d";
 
 // ⑥ 하단 문구
+// 운영진 공용 로그인용 계정 (Firebase 콘솔에서 직접 만든 계정). 비밀번호는 코드에 없습니다.
+export const ADMIN_LOGIN_EMAIL = "admin@jnumir.kr";
+
 export const CREDIT = "전남대학교 여수캠퍼스 공식 창업동아리 미르 · 실험실특화형창업선도대학 사업단 동아리 관리자 편승훈 위원 · 전남대학교 창업보육센터 소속 광주캠퍼스 동아리 담당자 · 여수캠퍼스 창업보육센터 구병우 실장님 — 도움에 감사드립니다.";
 
 // ⑦ 참가비·상품 설정 (원)

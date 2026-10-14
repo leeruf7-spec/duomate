@@ -2,8 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendEmailVerification, sendPasswordResetEmail, signOut, reload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy,
-  onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS, BANK, ADMIN_PIN_SHA256, CREDIT, FEE_WON, OPS_RATE, PRIZE_BASE, PRIZE_MAX } from "./firebase-config.js";
+  onSnapshot, serverTimestamp, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig, ALLOWED_DOMAINS, ADMIN_EMAILS, BANK, ADMIN_PIN_SHA256, ADMIN_LOGIN_EMAIL, CREDIT, FEE_WON, OPS_RATE, PRIZE_BASE, PRIZE_MAX } from "./firebase-config.js";
 import { SPR } from "./sprites.js";
 
 const fb = initializeApp(firebaseConfig);
@@ -80,6 +80,14 @@ $("#authBtn").onclick=async()=>{
   }catch(e){authError(e.code==="x"?e.message:(AUTH_MSG[e.code]||"잠시 뒤 다시 시도해 주세요 ("+e.code+")"))}
   btn.disabled=false;
 };
+$("#admToggle").onclick=()=>{$("#admBox").hidden=!$("#admBox").hidden;$("#admPw").focus()};
+async function admEnter(){
+  const pw=$("#admPw").value,e=$("#admErr");if(!pw)return;$("#admGo").disabled=true;
+  try{await signInWithEmailAndPassword(auth,ADMIN_LOGIN_EMAIL,pw);try{sessionStorage.setItem("dm_pin","1")}catch(x){}e.hidden=true;$("#admPw").value=""}
+  catch(x){e.textContent=x.code==="auth/too-many-requests"?"시도가 너무 많아요. 잠시 뒤 다시 해 주세요.":"운영진 비밀번호가 맞지 않아요.";e.hidden=false;shake($("#admLogin"))}
+  $("#admGo").disabled=false;
+}
+$("#admGo").onclick=admEnter;$("#admPw").addEventListener("keydown",x=>{if(x.key==="Enter")admEnter()});
 $("#forgotBtn").onclick=async()=>{
   const email=readEmail(); if(!isJnu(email)) return authError("학교 메일 아이디를 먼저 적어 주세요");
   try{await sendPasswordResetEmail(auth,email);toast("비밀번호 재설정 메일을 보냈어요")}catch(e){authError(AUTH_MSG[e.code]||"메일을 보내지 못했어요")}
@@ -93,8 +101,8 @@ $("#resendBtn").onclick=async()=>{try{await sendEmailVerification(auth.currentUs
 $("#logoutBtn2").onclick=()=>signOut(auth);
 $("#logoutBtn").onclick=async()=>{if(running)stopTimer();await signOut(auth);toast("로그아웃했어요")};
 
-function showAuth(){ $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=false; $("#verifyBox").hidden=true; setAuthMode(authMode) }
-function showVerify(u){ $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=true; $("#verifyBox").hidden=false; $("#verifyMail").textContent=u.email; $("#verifyErr").hidden=true }
+function showAuth(){ $("#admLogin").hidden=false; $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=false; $("#verifyBox").hidden=true; setAuthMode(authMode) }
+function showVerify(u){ $("#admLogin").hidden=true; $("#authView").hidden=false; $("#appView").hidden=true; $("#tabNav").hidden=true; $("#authForm").hidden=true; $("#verifyBox").hidden=false; $("#verifyMail").textContent=u.email; $("#verifyErr").hidden=true }
 
 onAuthStateChanged(auth,u=>{
   unsubAll();
@@ -375,7 +383,7 @@ $("#nextBtn").onclick=async()=>{
 ["#aNick","#aDept","#aCollege","#aStrict"].forEach(s=>$(s).addEventListener("input",()=>{if(step===5)drawContract()}));
 async function submitApp(){
   if(S.ch.partner.uid){$("#formErr").textContent="진행 중인 듀오가 끝난 뒤에 다시 신청할 수 있어요";$("#formErr").hidden=false;return}
-  const a={uid:ME.uid,email:ME.email,no:S.app?.no||String(Math.floor(1000+Math.random()*9000)),nick:$("#aNick").value.trim(),campus:F.campus,gender:F.gender,mailOk:$("#aAgreeMail").checked,paid:false,college:$("#aCollege").value,dept:$("#aDept").value.trim(),year:F.year,
+  const a={uid:ME.uid,email:ME.email,no:S.app?.no||String(Math.floor(1000+Math.random()*9000)),nick:$("#aNick").value.trim(),campus:F.campus,gradeGoal:$("#aGrade").value,gender:F.gender,mailOk:$("#aAgreeMail").checked,paid:false,college:$("#aCollege").value,dept:$("#aDept").value.trim(),year:F.year,
     exam:F.exam,subject:$("#aSubject").value.trim(),goal:F.goal,pass:F.pass,slots:F.slots,places:F.places,talk:F.talk,pref:F.pref,mode:F.mode,deposit:F.mode==="deposit"?F.deposit:0,
     strict:$("#aStrict").checked,animal:F.animal,msg:$("#aMsg").value.trim(),kakao:$("#aKakao").value.trim(),refund:F.mode==="deposit"?$("#aRefund").value.trim():"",status:"wait",createdAt:serverTimestamp()};
   a.paid=S.app?.paid||false; if(S.app?.forfeit)a.forfeit=true;
@@ -395,7 +403,7 @@ $("#goHome").onclick=()=>go("home");
 function loadForm(){
   if(!S.app)return; const a=S.app;
   Object.assign(F,{campus:a.campus,gender:a.gender||null,year:a.year,exam:a.exam,goal:a.goal,pass:a.pass,slots:a.slots,places:a.places,talk:a.talk,pref:a.pref,mode:"prize",deposit:10000,animal:a.animal});
-  $("#aNick").value=a.nick;$("#aDept").value=a.dept||"";$("#aSubject").value=a.subject||"";$("#aMsg").value=a.msg||"";$("#aKakao").value=a.kakao||"";$("#aRefund").value=a.refund||"";$("#aStrict").checked=!!a.strict;
+  $("#aNick").value=a.nick;$("#aDept").value=a.dept||"";$("#aSubject").value=a.subject||"";$("#aMsg").value=a.msg||"";$("#aKakao").value=a.kakao||"";$("#aRefund").value=a.refund||"";$("#aGrade").value=a.gradeGoal||"";$("#aStrict").checked=!!a.strict;
   fillColleges(); $("#aCollege").value=a.college;
 }
 
@@ -452,10 +460,26 @@ function chkResult(ok){
   S.ch.log[k]=r;save();schedChk();pushPresence(true);
 }
 function chkTick(){
+  if(chk.busy)return;
   if(!chk.dl&&Date.now()>=chk.at){chk.dl=Date.now()+60000;$("#chkBox").hidden=false;alarmOn()}
   if(chk.dl){const s=Math.ceil((chk.dl-Date.now())/1000);$("#chkSec").textContent=Math.max(0,s);if(s<=0)chkResult(false)}
 }
-$("#chkBtn").onclick=()=>chkResult(true);
+async function snap(){
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:320}},audio:false});
+    const v=document.createElement("video");v.muted=true;v.playsInline=true;v.srcObject=st;await v.play();await new Promise(r=>setTimeout(r,600));
+    const c=document.createElement("canvas");c.width=240;c.height=Math.round(240*(v.videoHeight/v.videoWidth))||320;
+    c.getContext("2d").drawImage(v,0,0,c.width,c.height);st.getTracks().forEach(t=>t.stop());
+    return c.toDataURL("image/jpeg",.5);
+  }catch(e){return null}
+}
+$("#chkBtn").onclick=async()=>{
+  if(chk.busy)return; chk.busy=true; alarmOff(); $("#chkBtn").disabled=true; $("#chkBtn").textContent="사진 찍는 중…";
+  const img=await snap();
+  if(img&&MATCH){try{await addDoc(collection(db,"matches",MATCH.id,"shots"),{uid:ME.uid,img,createdAt:serverTimestamp()})}catch(e){}}
+  chk.busy=false; $("#chkBtn").disabled=false; $("#chkBtn").textContent="여기 있어요 (셀카)";
+  chkResult(true);
+};
 function drawFocus(){
   if(!running)return; chkTick();
   const s=Math.floor((Date.now()-running.t0)/1000);
@@ -547,8 +571,8 @@ function suggest(){
   return out;
 }
 const side=a=>`<div class="side"><img src="${SPR[a.animal]?.study||SPR.panda.study}" alt=""><b>${esc(a.nick)}</b><span class="muted">${esc(a.college)} ${esc(a.year||"")}</span><span class="muted tnum">${hm(a.goal)} · ${a.mode==="deposit"?won(a.deposit):"상품"}</span></div>`;
-const card=(a,extra="")=>`<div class="app-card"><img src="${SPR[a.animal]?.sleep||SPR.panda.sleep}" alt=""><div class="meta"><b>${esc(a.nick)}</b> <span class="muted">#${esc(a.no)}</span><div class="muted">${esc(a.campus)} · ${esc(a.college)} ${esc(a.dept)} ${esc(a.year||"")}</div><div class="muted">${hm(a.goal)} · ${esc((a.slots||[]).join(", "))}</div>${a.forfeit?'<div class="unpaid">상품 몰수 대상</div>':""}<div class="muted">${esc(a.gender||"-")} · 카톡 ${esc(a.kakao)} · ${esc(a.email)}</div>${a.mode==="deposit"?`<div class="muted">환급계좌 ${esc(a.refund||"미입력")}</div>`:""}${true?`<div class="${a.paid?"paid":"unpaid"}">${won(FEE_WON)} ${a.paid?"입금 완료":"입금 대기"} <button class="btn sm" data-paid="${a.uid}" data-v="${a.paid?0:1}" type="button">${a.paid?"취소":"입금 확인"}</button></div>`:""}</div>${extra}</div>`;
-const pick=a=>({email:a.email,gender:a.gender||"",uid:a.uid,nick:a.nick,animal:a.animal,goal:a.goal,pass:a.pass,mode:a.mode,deposit:a.deposit||0,strict:!!a.strict,msg:a.msg||"",kakao:a.kakao,email:a.email});
+const card=(a,extra="")=>`<div class="app-card"><img src="${SPR[a.animal]?.sleep||SPR.panda.sleep}" alt=""><div class="meta"><b>${esc(a.nick)}</b> <span class="muted">#${esc(a.no)}</span><div class="muted">${esc(a.campus)} · ${esc(a.college)} ${esc(a.dept)} ${esc(a.year||"")}</div><div class="muted">${hm(a.goal)} · ${esc((a.slots||[]).join(", "))}</div>${a.forfeit?'<div class="unpaid">상품 몰수 대상</div>':""}<div class="muted">목표학점 ${esc(a.gradeGoal||"-")}</div><div class="muted">${esc(a.gender||"-")} · 카톡 ${esc(a.kakao)} · ${esc(a.email)}</div>${a.mode==="deposit"?`<div class="muted">환급계좌 ${esc(a.refund||"미입력")}</div>`:""}${true?`<div class="${a.paid?"paid":"unpaid"}">${won(FEE_WON)} ${a.paid?"입금 완료":"입금 대기"} <button class="btn sm" data-paid="${a.uid}" data-v="${a.paid?0:1}" type="button">${a.paid?"취소":"입금 확인"}</button></div>`:""}</div>${extra}</div>`;
+const pick=a=>({gradeGoal:a.gradeGoal||"",email:a.email,gender:a.gender||"",uid:a.uid,nick:a.nick,animal:a.animal,goal:a.goal,pass:a.pass,mode:a.mode,deposit:a.deposit||0,strict:!!a.strict,msg:a.msg||"",kakao:a.kakao,email:a.email});
 function mailHref(m,kind){
   const to=[m.a.email,m.b.email].filter(Boolean).join(",");
   const dep=m.a.mode==="deposit";
@@ -608,7 +632,7 @@ function pinOk(){try{return sessionStorage.getItem("dm_pin")==="1"}catch(e){retu
 function drawPin(){const ok=pinOk();$("#pinGate").hidden=ok;$("#adminBody").hidden=!ok}
 $("#pinBtn").onclick=async()=>{if(await sha($("#pinIn").value.trim())===ADMIN_PIN_SHA256){try{sessionStorage.setItem("dm_pin","1")}catch(e){}$("#pinErr").hidden=true;$("#pinIn").value="";drawPin();renderAdmin()}else{$("#pinErr").hidden=false;shake($("#pinGate"))}};
 $("#pinIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#pinBtn").click()});
-$("#csvBtn").onclick=()=>{const cols=["no","nick","email","gender","campus","college","dept","year","goal","pass","mode","deposit","paid","kakao","refund","status"];
+$("#csvBtn").onclick=()=>{const cols=["no","nick","email","gender","gradeGoal","campus","college","dept","year","goal","pass","mode","deposit","paid","kakao","refund","status"];
   const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const t=[cols.join(","),...APPS.map(a=>cols.map(c=>q(a[c])).join(","))].join("\n");
   const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+t],{type:"text/csv"}));l.download="duomate_applications.csv";l.click()};
 $("#credit").textContent=CREDIT;
@@ -618,11 +642,19 @@ $("#achN").addEventListener("input",drawPool);
 $("#sampleBtn").onclick=()=>{const ppl=MATCHES.flatMap(m=>[m.a,m.b]);for(let i=ppl.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[ppl[i],ppl[j]]=[ppl[j],ppl[i]]}
   const p=ppl.slice(0,3);$("#sampleList").innerHTML=p.length?p.map(x=>`<div class="app-card"><div class="meta"><b>${esc(x.nick)}</b><div class="muted">카톡 ${esc(x.kakao)} · ${esc(x.email||"")}</div></div></div>`).join(""):'<div class="empty">진행 중인 듀오가 없어요.</div>'};
 /* chat */
-let chatUnsub=null,chatMatch=null;
+let chatUnsub=null,shotUnsub=null,chatMatch=null;
 function drawChatPanel(){
   const p=$("#chatPanel");p.hidden=!MATCH;
-  if(!MATCH){chatUnsub?.();chatUnsub=null;chatMatch=null;return}
+  if(!MATCH){chatUnsub?.();shotUnsub?.();chatUnsub=null;shotUnsub=null;chatMatch=null;return}
   if(chatMatch===MATCH.id)return; chatUnsub?.(); chatMatch=MATCH.id;
+  shotUnsub?.();
+  shotUnsub=onSnapshot(query(collection(db,"matches",MATCH.id,"shots"),orderBy("createdAt","desc"),limit(8)),s=>{
+    const now=Date.now(),keep=[];
+    s.docs.forEach(d=>{const m=d.data(),t=m.createdAt?.toMillis?.()||now;
+      if(now-t>864e5){if(m.uid===ME.uid)deleteDoc(d.ref).catch(()=>{})}else keep.push(m)});
+    $("#shots").innerHTML=keep.length?keep.map(m=>`<figure><img src="${m.img}" alt=""><figcaption>${m.uid===ME.uid?"나":"파트너"}</figcaption></figure>`).join(""):"";
+    $("#shotsNote").hidden=!keep.length;
+  },()=>{});
   chatUnsub=onSnapshot(query(collection(db,"matches",MATCH.id,"msgs"),orderBy("createdAt","asc")),s=>{
     const l=$("#chatLog");l.innerHTML=s.docs.map(d=>{const m=d.data();return `<div class="${m.uid===ME.uid?"me":""}">${esc(m.text)}</div>`}).join("");l.scrollTop=l.scrollHeight},()=>{});
 }
