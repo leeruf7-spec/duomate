@@ -226,3 +226,24 @@ input[type=password],input[type=email]{font:inherit;padding:10px 12px;border-rad
 .report-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:14px;background:var(--sunk);font-size:13px}
 .report-card .row b{font-size:14px}
 .partner-actions{display:flex;justify-content:flex-end}
+
+.bankbox{border:1px dashed var(--line,#ccc);border-radius:12px;padding:12px;margin:10px 0;font-size:14px;line-height:1.6}
+.bankbox b.tnum{font-size:17px;user-select:all}
+.chatlog{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.chatlog div{max-width:80%;padding:7px 10px;border-radius:12px;background:var(--sunk,#eee);font-size:14px;word-break:break-word}
+.chatlog div.me{align-self:flex-end;background:var(--flame-soft,#ffe3d4)}
+.chatrow{display:flex;gap:6px}.chatrow input{flex:1;min-width:0}
+.credit{font-size:11px;opacity:.6;text-align:center;padding:16px 16px 90px;line-height:1.5}
+.paid{color:var(--teal,#17786B);font-weight:700}.unpaid{color:var(--bad,#c33);font-weight:700}
+
+.chkbox{position:fixed;left:16px;right:16px;bottom:24px;z-index:60;background:#fff;color:#222;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;text-align:center;box-shadow:0 8px 30px #0006}
+.together{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+.together .btn[aria-pressed=true]{background:var(--teal,#17786B);color:#fff}
+
+.chkbox{inset:0;left:0;right:0;bottom:0;border-radius:0;justify-content:center;font-size:22px;background:#EE5A1C;color:#fff;animation:chkp .6s infinite alternate}
+.chkbox b{font-size:34px}.chkbox .tnum{font-size:96px;font-weight:800;line-height:1}
+.chkbox .btn{font-size:24px;padding:20px;background:#fff;color:#EE5A1C}
+@keyframes chkp{from{background:#EE5A1C}to{background:#C93C0A}}
+
+.shots{display:flex;gap:6px;overflow-x:auto;margin:8px 0}.shots figure{margin:0;flex:none;text-align:center;font-size:11px}
+.shots img{width:72px;height:96px;object-fit:cover;border-radius:10px;display:block;transform:scaleX(-1)}
